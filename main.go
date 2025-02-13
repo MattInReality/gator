@@ -86,6 +86,23 @@ func handlerReset(s *state, cmd command) error {
 	return nil
 }
 
+func handlerUsers(s *state, cmd command) error {
+	ctx := context.TODO()
+	currentUser := s.config.CurrentUserName
+	users, err := s.db.GetUsers(ctx)
+	if err != nil {
+		return err
+	}
+	for _, user := range users {
+		if user.Name == currentUser {
+			fmt.Printf("* %s (current)\n", user.Name)
+		} else {
+			fmt.Printf("* %s\n", user.Name)
+		}
+	}
+	return nil
+}
+
 type commands struct {
 	handlers map[string]commandHandler
 }
@@ -132,6 +149,7 @@ func main() {
 	cmds.handlers["login"] = handlerLogin
 	cmds.handlers["register"] = handlerRegister
 	cmds.handlers["reset"] = handlerReset
+	cmds.handlers["users"] = handlerUsers
 
 	cmdArgs := os.Args
 	if len(cmdArgs) < 2 {
