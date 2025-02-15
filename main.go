@@ -103,6 +103,17 @@ func handlerUsers(s *state, cmd command) error {
 	return nil
 }
 
+func handlerAgg(s *state, cmd command) error {
+	_, _ = s, cmd
+	ctx := context.TODO()
+	feed, err := fetchFeed(ctx, "https://www.wagslane.dev/index.xml")
+	if err != nil {
+		return err
+	}
+	fmt.Println(feed)
+	return nil
+}
+
 type commands struct {
 	handlers map[string]commandHandler
 }
@@ -150,6 +161,7 @@ func main() {
 	cmds.handlers["register"] = handlerRegister
 	cmds.handlers["reset"] = handlerReset
 	cmds.handlers["users"] = handlerUsers
+	cmds.handlers["agg"] = handlerAgg
 
 	cmdArgs := os.Args
 	if len(cmdArgs) < 2 {
