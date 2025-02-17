@@ -27,6 +27,8 @@ type command struct {
 
 type commandHandler func(*state, command) error
 
+type commandHandlerLoggedIn func(*state, command, database.User) error
+
 func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) < 1 {
 		return errors.New("username is required")
@@ -134,6 +136,12 @@ func (c *commands) run(s *state, cmd command) error {
 	return nil
 }
 
+func NewCommands() commands {
+	return commands{
+		handlers: make(map[string]commandHandler),
+	}
+}
+
 func NewCommand(name string, args []string) (command, error) {
 	return command{name: name, args: args}, nil
 }
@@ -155,13 +163,17 @@ func main() {
 	appState.config = &configFile
 	appState.db = dbQueries
 
-	cmds := commands{}
-	cmds.handlers = make(map[string]commandHandler)
-	cmds.handlers["login"] = handlerLogin
-	cmds.handlers["register"] = handlerRegister
-	cmds.handlers["reset"] = handlerReset
-	cmds.handlers["users"] = handlerUsers
-	cmds.handlers["agg"] = handlerAgg
+	cmds := NewCommands()
+	cmds.register("login", handlerLogin)
+	cmds.register("register", handlerRegister)
+	cmds.register("reset", handlerReset)
+	cmds.register("users", handlerUsers)
+	cmds.register("agg", handlerAgg)
+	cmds.register("addfeed", middlewareLoggedIn(handlerAddFeed))
+	cmds.register("feeds", handlerGetFeeds)
+	cmds.register("follow", middlewareLoggedIn(handlerFollow))
+	cmds.register("following", handlerFollowing)
+	cmds.register("unfollow", middlewareLoggedIn(handlerUnfollow))
 
 	cmdArgs := os.Args
 	if len(cmdArgs) < 2 {
@@ -178,5 +190,15 @@ func main() {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
+}
 
+func middlewareLoggedIn(handler commandHandlerLoggedIn) commandHandler {
+	return func(s *state, cmd command) error {
+		ctx := context.TODO()
+		user, err := s.db.GetUser(ctx, s.config.CurrentUserName)
+		if err != nil {
+			return err
+		}
+		return handler(s, cmd, user)
+	}
 }
