@@ -106,13 +106,18 @@ func handlerUsers(s *state, cmd command) error {
 }
 
 func handlerAgg(s *state, cmd command) error {
-	_, _ = s, cmd
-	ctx := context.TODO()
-	feed, err := fetchFeed(ctx, "https://www.wagslane.dev/index.xml")
+	if len(cmd.args) < 1 {
+		return fmt.Errorf("command agg requires a single argument for the time between requests")
+	}
+	timeBetweenRequests, err := time.ParseDuration(cmd.args[0])
 	if err != nil {
 		return err
 	}
-	fmt.Println(feed)
+	ticker := time.NewTicker(timeBetweenRequests)
+	for ; ; <-ticker.C {
+		err = scrapeFeeds(s)
+		fmt.Printf("%v", err)
+	}
 	return nil
 }
 

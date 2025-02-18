@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/xml"
+	"fmt"
+	"github.com/MattInReality/gator/internal/database"
 	"html"
 	"io"
 	"net/http"
+	"time"
 )
 
 type RSSFeed struct {
@@ -57,4 +61,30 @@ func unescapeData(data *RSSFeed) *RSSFeed {
 		data.Channel.Item[i].Title = html.UnescapeString(data.Channel.Item[i].Title)
 	}
 	return data
+}
+
+func scrapeFeeds(s *state) error {
+	f, err := s.db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return err
+	}
+	feed, err := fetchFeed(context.Background(), f.Url)
+	if err != nil {
+		return err
+	}
+	// NullTime requires the Valid true is set. If valid false is set, SQL set's null.
+	feedUpdate := database.MarkFeedFetchedParams{
+		LastFetchedAt: sql.NullTime{Time: time.Now(), Valid: true},
+		UpdatedAt:     time.Now(),
+		ID:            f.ID,
+	}
+	err = s.db.MarkFeedFetched(context.Background(), feedUpdate)
+	if err != nil {
+		return err
+	}
+	for _, item := range feed.Channel.Item {
+		fmt.Printf("%s\n", item.Title)
+	}
+	fmt.Println("------------------------------------------------------------------------")
+	return nil
 }
