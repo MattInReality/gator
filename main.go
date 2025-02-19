@@ -116,9 +116,10 @@ func handlerAgg(s *state, cmd command) error {
 	ticker := time.NewTicker(timeBetweenRequests)
 	for ; ; <-ticker.C {
 		err = scrapeFeeds(s)
-		fmt.Printf("%v", err)
+		if err != nil {
+			fmt.Printf("%v", err)
+		}
 	}
-	return nil
 }
 
 type commands struct {
@@ -179,6 +180,7 @@ func main() {
 	cmds.register("follow", middlewareLoggedIn(handlerFollow))
 	cmds.register("following", handlerFollowing)
 	cmds.register("unfollow", middlewareLoggedIn(handlerUnfollow))
+	cmds.register("browse", middlewareLoggedIn(handlerBrowse))
 
 	cmdArgs := os.Args
 	if len(cmdArgs) < 2 {

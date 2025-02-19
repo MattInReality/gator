@@ -6,9 +6,11 @@ import (
 	"encoding/xml"
 	"fmt"
 	"github.com/MattInReality/gator/internal/database"
+	"github.com/google/uuid"
 	"html"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -83,8 +85,28 @@ func scrapeFeeds(s *state) error {
 		return err
 	}
 	for _, item := range feed.Channel.Item {
-		fmt.Printf("%s\n", item.Title)
+		pubAt, err := time.Parse(time.RFC1123Z, item.PubDate)
+		valid := true
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			valid = false
+		}
+		np := database.CreatePostParams{
+			ID:          uuid.New(),
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+			Title:       item.Title,
+			Url:         item.Link,
+			Description: sql.NullString{String: item.Description, Valid: true},
+			PublishedAt: sql.NullTime{Time: pubAt, Valid: valid},
+			FeedID:      f.ID,
+		}
+		_, err = s.db.CreatePost(context.Background(), np)
+		if err != nil {
+			if !strings.Contains(err.Error(), "duplicate key") {
+				fmt.Printf("error creating post: %v\n", err)
+			}
+		}
 	}
-	fmt.Println("------------------------------------------------------------------------")
 	return nil
 }
